@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
-import { login, register, activate, getEvents, createEvent, getMyItems, getMe, updateMe, getSchools, createSchool } from './api';
+import { login, register, activate, getEvents, createEvent, getMyItems, getMe, updateMe, getSchools, createSchool, getPendingUsers, approveUser } from './api';
 import { Container, TextField, Button, Typography, Box, AppBar, Toolbar, Drawer, List, ListItem, ListItemButton, ListItemText } from '@mui/material';
 import './App.css';
 
 function parseJwt(token) {
   try {
     return JSON.parse(atob(token.split('.')[1]));
-  } catch (e) {
+  } catch {
     return null;
   }
 }
@@ -26,6 +26,7 @@ function App() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [newEventTitle, setNewEventTitle] = useState('');
   const [profilePass, setProfilePass] = useState('');
+  const [pendingUsers, setPendingUsers] = useState([]);
 
   useEffect(() => {
     if (token) {
@@ -41,7 +42,10 @@ function App() {
     if (view === 'register' || view === 'schools') {
       getSchools().then(setSchools).catch(() => {});
     }
-  }, [view]);
+    if (view === 'approve') {
+      getPendingUsers(token).then(setPendingUsers).catch(() => {});
+    }
+  }, [view, token]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -55,7 +59,7 @@ function App() {
       getEvents(data.token).then(setEvents).catch(()=>{});
       getMyItems(data.token).then(setItems).catch(()=>{});
       getMe(data.token).then(setUser).catch(()=>{});
-    } catch (e) {
+    } catch {
       setError('Login failed');
     }
   };
@@ -66,7 +70,7 @@ function App() {
       const data = await register(regForm.user, regForm.pass, regForm.role, regForm.school);
       setActivationToken(data.activationToken);
       setView('activate');
-    } catch (e) {
+    } catch {
       setError('Registration failed');
     }
   };
@@ -76,7 +80,7 @@ function App() {
     try {
       await activate(activationInput || activationToken);
       setView('login');
-    } catch (e) {
+    } catch {
       setError('Activation failed');
     }
   };
@@ -165,6 +169,9 @@ function App() {
           <Button color="inherit" onClick={()=>setView('schools')}>Schulen</Button>
         )}
         <Button color="inherit" onClick={()=>setView('tasks')}>Meine Aufgaben</Button>
+        {user && ['admin','leader'].includes(user.role) && (
+          <Button color="inherit" onClick={()=>setView('approve')}>Freischalten</Button>
+        )}
         <Box sx={{ml:'auto'}}>
           <Button color="inherit" onClick={()=>setDrawerOpen(true)}>Menü</Button>
         </Box>
@@ -180,6 +187,9 @@ function App() {
           <ListItemButton onClick={()=>setView('profile')}><ListItemText primary="Profil" /></ListItemButton>
           {user?.role === 'admin' && (
             <ListItemButton onClick={()=>setView('schools')}><ListItemText primary="Schulen" /></ListItemButton>
+          )}
+          {user && ['admin','leader'].includes(user.role) && (
+            <ListItemButton onClick={()=>setView('approve')}><ListItemText primary="Freischalten" /></ListItemButton>
           )}
           <ListItemButton onClick={logout}><ListItemText primary="Logout" /></ListItemButton>
         </List>
@@ -234,6 +244,20 @@ function App() {
         </Box>
         <ul>
           {schools.map(s=> <li key={s.id}>{s.name}</li>)}
+        </ul>
+      </Box>
+    );
+  } else if (view === 'approve' && user && ['admin','leader'].includes(user.role)) {
+    content = (
+      <Box sx={{p:2}}>
+        <Typography variant="h5">Konten freischalten</Typography>
+        <ul>
+          {pendingUsers.map(u => (
+            <li key={u.id}>
+              {u.username} ({u.role})
+              <Button size="small" onClick={()=>approveUser(u.id, token).then(()=>getPendingUsers(token).then(setPendingUsers))}>OK</Button>
+            </li>
+          ))}
         </ul>
       </Box>
     );

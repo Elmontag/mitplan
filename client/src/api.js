@@ -95,3 +95,20 @@ export async function updateMe(data, token) {
   if (!res.ok) throw new Error('failed');
   return res.json();
 }
+
+export async function getPendingUsers(token) {
+  const res = await fetch(`${API_URL}/pending-users`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!res.ok) throw new Error('failed');
+  return res.json();
+}
+
+export async function approveUser(id, token) {
+  const res = await fetch(`${API_URL}/users/${id}/approve`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!res.ok) throw new Error('failed');
+  return res.json();
+}

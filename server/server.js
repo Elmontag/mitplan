@@ -3,6 +3,7 @@ const sqlite3 = require('sqlite3').verbose();
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
+const crypto = require('crypto');
 
 const PORT = process.env.PORT || 3001;
 const SECRET = process.env.JWT_SECRET || 'secret';
@@ -17,7 +18,9 @@ const initDB = () => {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       username TEXT UNIQUE,
       password TEXT,
-      role TEXT
+      role TEXT,
+      active INTEGER DEFAULT 0,
+      activation_token TEXT
     )`);
     db.run(`CREATE TABLE IF NOT EXISTS events (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -39,10 +42,10 @@ const initDB = () => {
 const createDemoData = async () => {
   const hash = await bcrypt.hash('demo', 10);
   db.serialize(() => {
-    db.run(`INSERT OR IGNORE INTO users(username, password, role) VALUES
-      ('parent', ?, 'parent'),
-      ('teacher', ?, 'teacher'),
-      ('admin', ?, 'admin')`, [hash, hash, hash]);
+    db.run(`INSERT OR IGNORE INTO users(username, password, role, active) VALUES
+      ('parent', ?, 'parent', 1),
+      ('teacher', ?, 'teacher', 1),
+      ('admin', ?, 'admin', 1)`, [hash, hash, hash]);
     db.run(`INSERT OR IGNORE INTO events(title, created_by) VALUES ('Demo Event', 2)`);
   });
 };
@@ -72,9 +75,19 @@ function auth(req, res, next) {
 app.post('/api/register', async (req, res) => {
   const {username, password, role = 'parent'} = req.body;
   const hash = await bcrypt.hash(password, 10);
-  db.run('INSERT INTO users(username, password, role) VALUES(?,?,?)', [username, hash, role], function(err) {
+  const token = crypto.randomBytes(16).toString('hex');
+  db.run('INSERT INTO users(username, password, role, activation_token) VALUES(?,?,?,?)', [username, hash, role, token], function(err) {
     if (err) return res.status(400).json({error: err.message});
-    res.json({id: this.lastID});
+    res.json({id: this.lastID, activationToken: token});
+  });
+});
+
+app.post('/api/activate', (req, res) => {
+  const {token} = req.body;
+  db.run('UPDATE users SET active = 1, activation_token = NULL WHERE activation_token = ?', [token], function(err) {
+    if (err) return res.status(400).json({error: err.message});
+    if (this.changes === 0) return res.status(400).json({error: 'invalid'});
+    res.json({activated: true});
   });
 });
 
@@ -82,6 +95,7 @@ app.post('/api/login', (req, res) => {
   const {username, password} = req.body;
   db.get('SELECT * FROM users WHERE username = ?', [username], async (err, row) => {
     if (err || !row) return res.status(400).json({error: 'invalid'});
+    if (!row.active) return res.status(403).json({error: 'inactive'});
     const match = await bcrypt.compare(password, row.password);
     if (!match) return res.status(400).json({error: 'invalid'});
     const token = jwt.sign({id: row.id, role: row.role}, SECRET);

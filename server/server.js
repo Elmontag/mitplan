@@ -5,6 +5,10 @@ const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const crypto = require('crypto');
 
+// Add support for multiple schools
+
+// new table/column names
+
 const PORT = process.env.PORT || 3001;
 const SECRET = process.env.JWT_SECRET || 'secret';
 const DEMO = process.env.ENABLE_DEMO === '1';
@@ -14,20 +18,31 @@ const db = new sqlite3.Database('db.sqlite');
 // create tables if not exist
 const initDB = () => {
   db.serialize(() => {
+    db.run(`CREATE TABLE IF NOT EXISTS schools (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT UNIQUE
+    )`);
+
     db.run(`CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       username TEXT UNIQUE,
       password TEXT,
       role TEXT,
       active INTEGER DEFAULT 0,
-      activation_token TEXT
+      activation_token TEXT,
+      school_id INTEGER,
+      FOREIGN KEY(school_id) REFERENCES schools(id)
     )`);
+
     db.run(`CREATE TABLE IF NOT EXISTS events (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       title TEXT,
       created_by INTEGER,
-      FOREIGN KEY(created_by) REFERENCES users(id)
+      school_id INTEGER,
+      FOREIGN KEY(created_by) REFERENCES users(id),
+      FOREIGN KEY(school_id) REFERENCES schools(id)
     )`);
+
     db.run(`CREATE TABLE IF NOT EXISTS items (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       event_id INTEGER,
@@ -36,17 +51,22 @@ const initDB = () => {
       FOREIGN KEY(event_id) REFERENCES events(id),
       FOREIGN KEY(taken_by) REFERENCES users(id)
     )`);
+
+    // try to add missing columns when updating existing DB
+    db.run('ALTER TABLE users ADD COLUMN school_id INTEGER', () => {});
+    db.run('ALTER TABLE events ADD COLUMN school_id INTEGER', () => {});
   });
 };
 
 const createDemoData = async () => {
   const hash = await bcrypt.hash('demo', 10);
   db.serialize(() => {
-    db.run(`INSERT OR IGNORE INTO users(username, password, role, active) VALUES
-      ('parent', ?, 'parent', 1),
-      ('teacher', ?, 'teacher', 1),
-      ('admin', ?, 'admin', 1)`, [hash, hash, hash]);
-    db.run(`INSERT OR IGNORE INTO events(title, created_by) VALUES ('Demo Event', 2)`);
+    db.run(`INSERT OR IGNORE INTO schools(id, name) VALUES (1, 'Demo School')`);
+    db.run(`INSERT OR IGNORE INTO users(username, password, role, active, school_id) VALUES
+      ('parent', ?, 'parent', 1, 1),
+      ('teacher', ?, 'teacher', 1, 1),
+      ('admin', ?, 'admin', 1, 1)`, [hash, hash, hash]);
+    db.run(`INSERT OR IGNORE INTO events(title, created_by, school_id) VALUES ('Demo Event', 2, 1)`);
   });
 };
 
@@ -57,6 +77,24 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.static("../public"));
+
+// list schools (public)
+app.get('/api/schools', (req, res) => {
+  db.all('SELECT id, name FROM schools', (err, rows) => {
+    if (err) return res.status(500).json({error: err.message});
+    res.json(rows);
+  });
+});
+
+// create school (admin only)
+app.post('/api/schools', auth, (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({error: 'forbidden'});
+  const {name} = req.body;
+  db.run('INSERT INTO schools(name) VALUES(?)', [name], function(err) {
+    if (err) return res.status(400).json({error: err.message});
+    res.json({id: this.lastID});
+  });
+});
 
 // auth middleware
 function auth(req, res, next) {
@@ -73,10 +111,10 @@ function auth(req, res, next) {
 }
 
 app.post('/api/register', async (req, res) => {
-  const {username, password, role = 'parent'} = req.body;
+  const {username, password, role = 'parent', schoolId} = req.body;
   const hash = await bcrypt.hash(password, 10);
   const token = crypto.randomBytes(16).toString('hex');
-  db.run('INSERT INTO users(username, password, role, activation_token) VALUES(?,?,?,?)', [username, hash, role, token], function(err) {
+  db.run('INSERT INTO users(username, password, role, activation_token, school_id) VALUES(?,?,?,?,?)', [username, hash, role, token, schoolId], function(err) {
     if (err) return res.status(400).json({error: err.message});
     res.json({id: this.lastID, activationToken: token});
   });
@@ -98,13 +136,13 @@ app.post('/api/login', (req, res) => {
     if (!row.active) return res.status(403).json({error: 'inactive'});
     const match = await bcrypt.compare(password, row.password);
     if (!match) return res.status(400).json({error: 'invalid'});
-    const token = jwt.sign({id: row.id, role: row.role}, SECRET);
+    const token = jwt.sign({id: row.id, role: row.role, school_id: row.school_id}, SECRET);
     res.json({token});
   });
 });
 
 app.get('/api/events', auth, (req, res) => {
-  db.all('SELECT * FROM events', (err, rows) => {
+  db.all('SELECT * FROM events WHERE school_id = ?', [req.user.school_id], (err, rows) => {
     if (err) return res.status(500).json({error: err.message});
     res.json(rows);
   });
@@ -112,10 +150,10 @@ app.get('/api/events', auth, (req, res) => {
 
 app.post('/api/events', auth, (req, res) => {
   const {title} = req.body;
-  if (!['teacher', 'admin'].includes(req.user.role)) {
+  if (!['teacher', 'admin', 'leader'].includes(req.user.role)) {
     return res.status(403).json({error: 'forbidden'});
   }
-  db.run('INSERT INTO events(title, created_by) VALUES(?, ?)', [title, req.user.id], function(err) {
+  db.run('INSERT INTO events(title, created_by, school_id) VALUES(?, ?, ?)', [title, req.user.id, req.user.school_id], function(err) {
     if (err) return res.status(400).json({error: err.message});
     res.json({id: this.lastID});
   });
@@ -154,7 +192,7 @@ app.get('/api/my-items', auth, (req, res) => {
 });
 
 app.get('/api/me', auth, (req, res) => {
-  db.get('SELECT id, username, role FROM users WHERE id = ?', [req.user.id], (err, row) => {
+  db.get('SELECT id, username, role, school_id FROM users WHERE id = ?', [req.user.id], (err, row) => {
     if (err) return res.status(500).json({error: err.message});
     res.json(row);
   });

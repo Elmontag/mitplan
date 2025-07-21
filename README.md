@@ -14,7 +14,8 @@ Sehen alles, können alles editieren.
 ## Klassenbeirat:
 Darf die Veranstaltungen einer Klasse sehen, Personen für die Übernahme einer Aufgabe benennen und Veranstaltungen hinzufügen, die jedoch nur für andere Eltern dieser Klasse sichtbar sind. Klassenlehrer können per Checkbox in den Eventeinstellungwn hinzugefügt werden.
 
-## Elternbeirat:Wie Klassenbeirat, aber für die ganze Schule.
+## Elternbeirat:
+Wie Klassenbeirat, aber für die ganze Schule.
 
 # Registrierung
 Der Elternbeirat wird von der Schulleitung bestimmt.

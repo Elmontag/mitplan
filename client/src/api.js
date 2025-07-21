@@ -67,6 +67,23 @@ export async function createEvent(title, token) {
   return res.json();
 }
 
+export async function getEventItems(eventId, token) {
+  const res = await fetch(`${API_URL}/events/${eventId}/items`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!res.ok) throw new Error('failed');
+  return res.json();
+}
+
+export async function takeItem(id, token) {
+  const res = await fetch(`${API_URL}/items/${id}/take`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!res.ok) throw new Error('failed');
+  return res.json();
+}
+
 export async function getMyItems(token) {
   const res = await fetch(`${API_URL}/my-items`, {
     headers: {Authorization: `Bearer ${token}`}

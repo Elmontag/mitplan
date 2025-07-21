@@ -145,7 +145,10 @@ app.post('/api/login', (req, res) => {
 });
 
 app.get('/api/events', auth, (req, res) => {
-  db.all('SELECT * FROM events WHERE school_id = ?', [req.user.school_id], (err, rows) => {
+  const sql = `SELECT events.*, users.username AS teacher
+               FROM events JOIN users ON events.created_by = users.id
+               WHERE events.school_id = ?`;
+  db.all(sql, [req.user.school_id], (err, rows) => {
     if (err) return res.status(500).json({error: err.message});
     res.json(rows);
   });
@@ -163,7 +166,11 @@ app.post('/api/events', auth, (req, res) => {
 });
 
 app.get('/api/events/:id/items', auth, (req, res) => {
-  db.all('SELECT * FROM items WHERE event_id = ?', [req.params.id], (err, rows) => {
+  const sql = `SELECT items.id, items.description, items.taken_by,
+                      users.username AS taken_by_username
+               FROM items LEFT JOIN users ON items.taken_by = users.id
+               WHERE items.event_id = ?`;
+  db.all(sql, [req.params.id], (err, rows) => {
     if (err) return res.status(500).json({error: err.message});
     res.json(rows);
   });

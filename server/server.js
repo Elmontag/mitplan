@@ -112,6 +112,9 @@ app.get('/api/events', auth, (req, res) => {
 
 app.post('/api/events', auth, (req, res) => {
   const {title} = req.body;
+  if (!['teacher', 'admin'].includes(req.user.role)) {
+    return res.status(403).json({error: 'forbidden'});
+  }
   db.run('INSERT INTO events(title, created_by) VALUES(?, ?)', [title, req.user.id], function(err) {
     if (err) return res.status(400).json({error: err.message});
     res.json({id: this.lastID});
@@ -136,6 +139,33 @@ app.post('/api/events/:id/items', auth, (req, res) => {
 app.post('/api/items/:id/take', auth, (req, res) => {
   db.run('UPDATE items SET taken_by = ? WHERE id = ?', [req.user.id, req.params.id], function(err) {
     if (err) return res.status(400).json({error: err.message});
+    res.json({updated: this.changes});
+  });
+});
+
+app.get('/api/my-items', auth, (req, res) => {
+  const sql = `SELECT items.id, items.description, events.title AS event_title
+               FROM items JOIN events ON items.event_id = events.id
+               WHERE taken_by = ?`;
+  db.all(sql, [req.user.id], (err, rows) => {
+    if (err) return res.status(500).json({error: err.message});
+    res.json(rows);
+  });
+});
+
+app.get('/api/me', auth, (req, res) => {
+  db.get('SELECT id, username, role FROM users WHERE id = ?', [req.user.id], (err, row) => {
+    if (err) return res.status(500).json({error: err.message});
+    res.json(row);
+  });
+});
+
+app.put('/api/me', auth, async (req, res) => {
+  const {password} = req.body;
+  if (!password) return res.status(400).json({error: 'missing'});
+  const hash = await bcrypt.hash(password, 10);
+  db.run('UPDATE users SET password = ? WHERE id = ?', [hash, req.user.id], function(err) {
+    if (err) return res.status(500).json({error: err.message});
     res.json({updated: this.changes});
   });
 });

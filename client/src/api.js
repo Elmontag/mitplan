@@ -37,3 +37,45 @@ export async function getEvents(token) {
   if (!res.ok) throw new Error('failed');
   return res.json();
 }
+
+export async function createEvent(title, token) {
+  const res = await fetch(`${API_URL}/events`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({title})
+  });
+  if (!res.ok) throw new Error('failed');
+  return res.json();
+}
+
+export async function getMyItems(token) {
+  const res = await fetch(`${API_URL}/my-items`, {
+    headers: {Authorization: `Bearer ${token}`}
+  });
+  if (!res.ok) throw new Error('failed');
+  return res.json();
+}
+
+export async function getMe(token) {
+  const res = await fetch(`${API_URL}/me`, {
+    headers: {Authorization: `Bearer ${token}`}
+  });
+  if (!res.ok) throw new Error('failed');
+  return res.json();
+}
+
+export async function updateMe(data, token) {
+  const res = await fetch(`${API_URL}/me`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) throw new Error('failed');
+  return res.json();
+}

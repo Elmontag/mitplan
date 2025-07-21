@@ -1,21 +1,38 @@
 import { useState, useEffect } from 'react';
-import { login, register, activate, getEvents } from './api';
-import { Container, TextField, Button, Typography, Box } from '@mui/material';
+import { login, register, activate, getEvents, createEvent, getMyItems, getMe, updateMe } from './api';
+import { Container, TextField, Button, Typography, Box, AppBar, Toolbar, Drawer, List, ListItem, ListItemButton, ListItemText } from '@mui/material';
 import './App.css';
+
+function parseJwt(token) {
+  try {
+    return JSON.parse(atob(token.split('.')[1]));
+  } catch (e) {
+    return null;
+  }
+}
 
 function App() {
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [view, setView] = useState(token ? 'events' : 'login');
+  const [user, setUser] = useState(token ? parseJwt(token) : null);
   const [form, setForm] = useState({user: '', pass: ''});
   const [regForm, setRegForm] = useState({user: '', pass: ''});
   const [events, setEvents] = useState([]);
+  const [items, setItems] = useState([]);
   const [error, setError] = useState('');
   const [activationToken, setActivationToken] = useState('');
   const [activationInput, setActivationInput] = useState('');
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [newEventTitle, setNewEventTitle] = useState('');
+  const [profilePass, setProfilePass] = useState('');
 
   useEffect(() => {
     if (token) {
+      const info = parseJwt(token);
+      setUser(info);
       getEvents(token).then(setEvents).catch(() => setError('Failed to load events'));
+      getMyItems(token).then(setItems).catch(() => {});
+      getMe(token).then(setUser).catch(() => {});
     }
   }, [token]);
 
@@ -26,6 +43,11 @@ function App() {
       localStorage.setItem('token', data.token);
       setToken(data.token);
       setView('events');
+      const info = parseJwt(data.token);
+      setUser(info);
+      getEvents(data.token).then(setEvents).catch(()=>{});
+      getMyItems(data.token).then(setItems).catch(()=>{});
+      getMe(data.token).then(setUser).catch(()=>{});
     } catch (e) {
       setError('Login failed');
     }
@@ -52,9 +74,23 @@ function App() {
     }
   };
 
+  const handleCreateEvent = async (e) => {
+    e.preventDefault();
+    try {
+      await createEvent(newEventTitle, token);
+      setNewEventTitle('');
+      getEvents(token).then(setEvents);
+      setView('events');
+    } catch {
+      setError('Create failed');
+    }
+  };
+
   const logout = () => {
     localStorage.removeItem('token');
     setToken(null);
+    setUser(null);
+    setItems([]);
     setView('login');
   };
 
@@ -102,17 +138,78 @@ function App() {
     );
   }
 
-  return (
-    <Container className="events">
-      <Box sx={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-        <Typography variant="h4">Events</Typography>
-        <Button onClick={logout}>Logout</Button>
+  const topBar = (
+    <AppBar position="static">
+      <Toolbar>
+        <Button color="inherit" onClick={()=>setView('events')}>Meine Events</Button>
+        {user && ['teacher','admin'].includes(user.role) && (
+          <Button color="inherit" onClick={()=>setView('newEvent')}>Neues Event</Button>
+        )}
+        <Button color="inherit" onClick={()=>setView('tasks')}>Meine Aufgaben</Button>
+        <Box sx={{ml:'auto'}}>
+          <Button color="inherit" onClick={()=>setDrawerOpen(true)}>Menü</Button>
+        </Box>
+      </Toolbar>
+    </AppBar>
+  );
+
+  const drawer = (
+    <Drawer anchor="right" open={drawerOpen} onClose={()=>setDrawerOpen(false)}>
+      <Box sx={{width:250}} role="presentation" onClick={()=>setDrawerOpen(false)}>
+        <List>
+          <ListItem><ListItemText primary={user?`User: ${user.username}`:''} /></ListItem>
+          <ListItemButton onClick={()=>setView('profile')}><ListItemText primary="Profil" /></ListItemButton>
+          <ListItemButton onClick={logout}><ListItemText primary="Logout" /></ListItemButton>
+        </List>
       </Box>
-      {error && <Typography color="error">{error}</Typography>}
-      <ul>
-        {events.map(ev => <li key={ev.id}>{ev.title}</li>)}
-      </ul>
-    </Container>
+    </Drawer>
+  );
+
+  let content = null;
+  if (view === 'events') {
+    content = (
+      <Box sx={{p:2}}>
+        <Typography variant="h5" gutterBottom>Events</Typography>
+        {error && <Typography color="error">{error}</Typography>}
+        <ul>
+          {events.map(ev => <li key={ev.id}>{ev.title}</li>)}
+        </ul>
+      </Box>
+    );
+  } else if (view === 'newEvent') {
+    content = (
+      <Box component="form" onSubmit={handleCreateEvent} sx={{display:'flex',flexDirection:'column',gap:2,p:2}}>
+        <Typography variant="h5">Neues Event</Typography>
+        <TextField label="Titel" value={newEventTitle} onChange={e=>setNewEventTitle(e.target.value)} />
+        <Button variant="contained" type="submit">Anlegen</Button>
+      </Box>
+    );
+  } else if (view === 'tasks') {
+    content = (
+      <Box sx={{p:2}}>
+        <Typography variant="h5">Meine Aufgaben</Typography>
+        <ul>
+          {items.map(it=> <li key={it.id}>{it.description} ({it.event_title})</li>)}
+        </ul>
+      </Box>
+    );
+  } else if (view === 'profile') {
+    content = (
+      <Box component="form" onSubmit={e=>{e.preventDefault();updateMe({password:profilePass},token).catch(()=>setError('update failed'));setProfilePass('');}} sx={{display:'flex',flexDirection:'column',gap:2,p:2}}>
+        <Typography variant="h5">Profil</Typography>
+        <Typography>Nutzername: {user?.username}</Typography>
+        <TextField label="Neues Passwort" type="password" value={profilePass} onChange={e=>setProfilePass(e.target.value)} />
+        <Button variant="contained" type="submit">Speichern</Button>
+      </Box>
+    );
+  }
+
+  return (
+    <Box>
+      {topBar}
+      {drawer}
+      {content}
+    </Box>
   );
 }
 

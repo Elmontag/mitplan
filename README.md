@@ -24,3 +24,10 @@ Elternregistrierungen für einzelne Klassen müssen vom Klassenlehrer freigescha
 
 Registrierungen als Lehrer müssen von der zuständigen Schulleitung freigeschaltet werden.
 Ohne Freischaltung ist kein Login möglich.
+
+## Docker Deployment
+Starte die Anwendung mit Docker Compose:
+
+```bash
+docker compose up --build
+```

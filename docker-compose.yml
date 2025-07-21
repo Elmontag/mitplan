@@ -1,6 +1,6 @@
-version: '3'
 services:
   server:
+    image: mitplan-server
     build: ./server
     volumes:
       - server-data:/app
@@ -9,6 +9,7 @@ services:
     ports:
       - "3001:3001"
   client:
+    image: mitplan-client
     build: ./client
     ports:
       - "3000:3000"

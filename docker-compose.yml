@@ -1,0 +1,8 @@
+version: '3'
+services:
+  mitplan:
+    build: .
+    ports:
+      - "3001:3001"
+    environment:
+      - ENABLE_DEMO=1

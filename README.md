@@ -36,5 +36,8 @@ Das Frontend ist dann unter http://localhost:5173 erreichbar und leitet API-Aufr
 ### Demo-Konten
 Durch Setzen der Umgebungsvariable `ENABLE_DEMO=1` beim Start des Backends werden einfache Demokonten erzeugt (`parent`/`teacher`/`admin` jeweils mit Passwort `demo`). Diese Funktion kann durch Entfernen der Variable deaktiviert werden.
 
+### Freischaltung neuer Konten
+Neu registrierte Nutzer:innen müssen von einer Schulleitung oder einem Admin freigeschaltet werden. Dazu steht im Menü der Punkt **Freischalten** zur Verfügung, über den alle noch nicht bestätigten Konten gelistet und aktiviert werden können. Ohne Freischaltung ist kein Login möglich.
+
 ### Docker
 Ein einfaches Docker-Setup befindet sich in `Dockerfile` und `docker-compose.yml`.

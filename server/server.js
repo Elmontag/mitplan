@@ -29,6 +29,7 @@ const initDB = () => {
       password TEXT,
       role TEXT,
       active INTEGER DEFAULT 0,
+      approved INTEGER DEFAULT 0,
       activation_token TEXT,
       school_id INTEGER,
       FOREIGN KEY(school_id) REFERENCES schools(id)
@@ -54,6 +55,7 @@ const initDB = () => {
 
     // try to add missing columns when updating existing DB
     db.run('ALTER TABLE users ADD COLUMN school_id INTEGER', () => {});
+    db.run('ALTER TABLE users ADD COLUMN approved INTEGER DEFAULT 0', () => {});
     db.run('ALTER TABLE events ADD COLUMN school_id INTEGER', () => {});
   });
 };
@@ -62,10 +64,10 @@ const createDemoData = async () => {
   const hash = await bcrypt.hash('demo', 10);
   db.serialize(() => {
     db.run(`INSERT OR IGNORE INTO schools(id, name) VALUES (1, 'Demo School')`);
-    db.run(`INSERT OR IGNORE INTO users(username, password, role, active, school_id) VALUES
-      ('parent', ?, 'parent', 1, 1),
-      ('teacher', ?, 'teacher', 1, 1),
-      ('admin', ?, 'admin', 1, 1)`, [hash, hash, hash]);
+    db.run(`INSERT OR IGNORE INTO users(username, password, role, active, approved, school_id) VALUES
+      ('parent', ?, 'parent', 1, 1, 1),
+      ('teacher', ?, 'teacher', 1, 1, 1),
+      ('admin', ?, 'admin', 1, 1, 1)`, [hash, hash, hash]);
     db.run(`INSERT OR IGNORE INTO events(title, created_by, school_id) VALUES ('Demo Event', 2, 1)`);
   });
 };
@@ -134,6 +136,7 @@ app.post('/api/login', (req, res) => {
   db.get('SELECT * FROM users WHERE username = ?', [username], async (err, row) => {
     if (err || !row) return res.status(400).json({error: 'invalid'});
     if (!row.active) return res.status(403).json({error: 'inactive'});
+    if (!row.approved) return res.status(403).json({error: 'unapproved'});
     const match = await bcrypt.compare(password, row.password);
     if (!match) return res.status(400).json({error: 'invalid'});
     const token = jwt.sign({id: row.id, role: row.role, school_id: row.school_id}, SECRET);
@@ -204,6 +207,26 @@ app.put('/api/me', auth, async (req, res) => {
   const hash = await bcrypt.hash(password, 10);
   db.run('UPDATE users SET password = ? WHERE id = ?', [hash, req.user.id], function(err) {
     if (err) return res.status(500).json({error: err.message});
+    res.json({updated: this.changes});
+  });
+});
+
+app.get('/api/pending-users', auth, (req, res) => {
+  if (!['admin', 'leader'].includes(req.user.role)) {
+    return res.status(403).json({error: 'forbidden'});
+  }
+  db.all('SELECT id, username, role FROM users WHERE approved = 0 AND school_id = ?', [req.user.school_id], (err, rows) => {
+    if (err) return res.status(500).json({error: err.message});
+    res.json(rows);
+  });
+});
+
+app.post('/api/users/:id/approve', auth, (req, res) => {
+  if (!['admin', 'leader'].includes(req.user.role)) {
+    return res.status(403).json({error: 'forbidden'});
+  }
+  db.run('UPDATE users SET approved = 1 WHERE id = ? AND school_id = ?', [req.params.id, req.user.school_id], function(err) {
+    if (err) return res.status(400).json({error: err.message});
     res.json({updated: this.changes});
   });
 });

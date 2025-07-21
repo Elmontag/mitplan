@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { login, register, activate, getEvents, createEvent, getMyItems, getMe, updateMe, getSchools, createSchool, getPendingUsers, approveUser } from './api';
+import { login, register, activate, getEvents, createEvent, getMyItems, getMe, updateMe, getSchools, createSchool, getPendingUsers, approveUser, getEventItems, takeItem } from './api';
 import { Container, TextField, Button, Typography, Box, AppBar, Toolbar, Drawer, List, ListItem, ListItemButton, ListItemText } from '@mui/material';
 import './App.css';
 
@@ -27,6 +27,8 @@ function App() {
   const [newEventTitle, setNewEventTitle] = useState('');
   const [profilePass, setProfilePass] = useState('');
   const [pendingUsers, setPendingUsers] = useState([]);
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [eventItems, setEventItems] = useState([]);
 
   useEffect(() => {
     if (token) {
@@ -46,6 +48,14 @@ function App() {
       getPendingUsers(token).then(setPendingUsers).catch(() => {});
     }
   }, [view, token]);
+
+  useEffect(() => {
+    if (view === 'eventDetail' && selectedEvent) {
+      getEventItems(selectedEvent.id, token)
+        .then(setEventItems)
+        .catch(() => {});
+    }
+  }, [view, selectedEvent, token]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -203,8 +213,31 @@ function App() {
       <Box sx={{p:2}}>
         <Typography variant="h5" gutterBottom>Events</Typography>
         {error && <Typography color="error">{error}</Typography>}
+        <Box sx={{display:'flex',flexDirection:'column',gap:1}}>
+          {events.map(ev => (
+            <Button key={ev.id} variant="outlined" onClick={() => {setSelectedEvent(ev);setView('eventDetail');}}>
+              {ev.title}
+            </Button>
+          ))}
+        </Box>
+      </Box>
+    );
+  } else if (view === 'eventDetail' && selectedEvent) {
+    content = (
+      <Box sx={{p:2}}>
+        <Button onClick={() => setView('events')}>Zurück</Button>
+        <Typography variant="h5" gutterBottom>{selectedEvent.title}</Typography>
+        <Typography sx={{mb:2}}>Klassenlehrer: {selectedEvent.teacher}</Typography>
+        <Typography variant="h6">Todos</Typography>
         <ul>
-          {events.map(ev => <li key={ev.id}>{ev.title}</li>)}
+          {eventItems.map(it => (
+            <li key={it.id}>
+              {it.description} - Zuständig: {it.taken_by_username || '-'}
+              {!it.taken_by && (
+                <Button size="small" onClick={() => takeItem(it.id, token).then(() => getEventItems(selectedEvent.id, token).then(setEventItems))}>Übernehmen</Button>
+              )}
+            </li>
+          ))}
         </ul>
       </Box>
     );

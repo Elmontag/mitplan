@@ -1,26 +1,40 @@
-# mitplan!
-Mitplan ist ein Event-Planungstool für KiTas und Schulen. Es soll Schulen, Klassen und Eltern die Möglichkeit geben Events zu erstellen, ToDos zu dokumentieren und eigendständig Aufgaben zu übernehmen.
+# Mitplan Demo
 
-# Rollen
-## Lehrer:
-Dürfen Veranstaltungen ihrer Klasse anlegen, editieren und löschen, ihnen zugeordnete Klassen sehen, registrierte Eltern ihren Klassen hinzufügen. Lehrer dürfen immer Mitbringeinträge in ihren Veranstaltungen anlegen, die von Eltern übernommen werden können.
+Dieses Repository enthält eine einfache Demo-Anwendung für gruppenbasierte Mitbringlisten. Das Backend basiert auf Node.js und SQLite, das Frontend auf React mit Vite.
 
-## Schuldirektion:
-Dürfen alle Veranstaltungen ihrer Schule sehen und editieren.
+## Setup
 
-## Admins:
-Sehen alles, können alles editieren.
+### Voraussetzungen
+- Node.js 20
+- npm
 
-## Klassenbeirat:
-Darf die Veranstaltungen einer Klasse sehen, Personen für die Übernahme einer Aufgabe benennen und Veranstaltungen hinzufügen, die jedoch nur für andere Eltern dieser Klasse sichtbar sind. Klassenlehrer können per Checkbox in den Eventeinstellungwn hinzugefügt werden.
+### Installation
+```bash
+# Backend installieren
+cd server
+npm install
+cd ..
+# Frontend installieren
+cd client
+npm install
+cd ..
+```
 
-## Elternbeirat:
-Wie Klassenbeirat, aber für die ganze Schule.
+### Entwicklung starten
+```bash
+# Backend
+cd server
+node server.js
+```
+In einem zweiten Terminal:
+```bash
+cd client
+npm run dev
+```
+Das Frontend ist dann unter http://localhost:5173 erreichbar und leitet API-Aufrufe an das Backend weiter.
 
-# Registrierung
-Der Elternbeirat wird von der Schulleitung bestimmt.
-Der Klassenbeirat wird vom Klassenlehrer definiert.
-Elternregistrierungen für einzelne Klassen müssen vom Klassenlehrer freigeschaltet werden.
+### Demo-Konten
+Durch Setzen der Umgebungsvariable `ENABLE_DEMO=1` beim Start des Backends werden einfache Demokonten erzeugt (`parent`/`teacher`/`admin` jeweils mit Passwort `demo`). Diese Funktion kann durch Entfernen der Variable deaktiviert werden.
 
-Registrierungen als Lehrer müssen von der zuständigen Schulleitung freigeschaltet werden.
-Ohne Freischaltung ist kein Login möglich.
+### Docker
+Ein einfaches Docker-Setup befindet sich in `Dockerfile` und `docker-compose.yml`.

@@ -24,3 +24,13 @@ Elternregistrierungen für einzelne Klassen müssen vom Klassenlehrer freigescha
 
 Registrierungen als Lehrer müssen von der zuständigen Schulleitung freigeschaltet werden.
 Ohne Freischaltung ist kein Login möglich.
+
+## Entwicklung
+
+1. `npm install` um Abhängigkeiten zu installieren.
+2. `npm test` führt die Jest Tests aus.
+3. `npm start` startet den Express Server.
+
+## Docker Deployment
+
+Mit `docker-compose up --build` wird die Anwendung zusammen mit einem nginx Reverse Proxy gestartet. Der Datenbankpfad wird im `data` Ordner abgelegt.

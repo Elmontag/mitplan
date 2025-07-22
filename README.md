@@ -30,6 +30,7 @@ Ohne Freischaltung ist kein Login möglich.
 1. `npm install` um Abhängigkeiten zu installieren.
 2. `npm test` führt die Jest Tests aus.
 3. `npm start` startet den Express Server.
+   Danach ist unter `http://localhost:3000/` eine kurze Begrüßungsnachricht erreichbar.
 
 ## Docker Deployment
 

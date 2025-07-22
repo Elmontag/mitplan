@@ -15,6 +15,11 @@ app.use(express.json());
 app.use(helmet());
 app.use(cors());
 
+// basic health check
+app.get('/', (req, res) => {
+  res.json({ message: 'Mitplan API' });
+});
+
 const limiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
   max: parseInt(process.env.RATE_LIMIT_REQUESTS) || 100

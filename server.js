@@ -16,13 +16,11 @@ app.use(express.json());
 app.use(helmet());
 app.use(cors());
 
-// basic health check
-app.get('/', (req, res) => {
+// health check under /api
+app.get('/api', (req, res) => {
   res.json({ message: 'Mitplan API' });
 });
 
-// serve frontend under /app
-app.use('/app', express.static(path.join(__dirname, 'public')));
 
 const limiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
@@ -112,8 +110,11 @@ app.post('/api/events', authenticate,
       });
   });
 
+// serve frontend
+app.use(express.static(path.join(__dirname, 'public')));
+
 // SPA fallback for client routes
-app.get('/app/*', (req, res) => {
+app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 

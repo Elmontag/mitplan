@@ -4,6 +4,7 @@ const rateLimit = require('express-rate-limit');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const path = require('path');
 const { body, validationResult } = require('express-validator');
 const nodemailer = require('nodemailer');
 const { db, init } = require('./db');
@@ -19,6 +20,9 @@ app.use(cors());
 app.get('/', (req, res) => {
   res.json({ message: 'Mitplan API' });
 });
+
+// serve frontend under /app
+app.use('/app', express.static(path.join(__dirname, 'public')));
 
 const limiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
@@ -107,6 +111,11 @@ app.post('/api/events', authenticate,
         res.json({ id: this.lastID });
       });
   });
+
+// SPA fallback for client routes
+app.get('/app/*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
 const port = process.env.PORT || 3000;
 if (require.main === module) {

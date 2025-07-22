@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>Mitplan Dashboard</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/react-router-dom@6/umd/react-router-dom.development.js"></script>
+  <script src="https://unpkg.com/@mui/material@5/umd/material-ui.development.js"></script>
+  <script src="https://unpkg.com/@emotion/react@11/umd/emotion-react.umd.min.js"></script>
+  <script src="https://unpkg.com/@emotion/styled@11/umd/emotion-styled.umd.min.js"></script>
+  <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+  <script src="https://unpkg.com/react-hook-form/dist/index.umd.js"></script>
+  <script src="https://unpkg.com/@tanstack/react-query@4/build/umd/index.production.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+  <script>
+    const { createRoot } = ReactDOM;
+    const { BrowserRouter, Routes, Route, Link, useNavigate } = ReactRouterDOM;
+    const { Button, TextField, AppBar, Toolbar, Tabs, Tab, List, ListItem, ListItemText } = MaterialUI;
+    const { useForm } = ReactHookForm;
+    const { QueryClient, QueryClientProvider } = ReactQuery;
+
+    function Login() {
+      const { register, handleSubmit } = useForm();
+      const navigate = useNavigate();
+      const onSubmit = async (data) => {
+        try {
+          const res = await axios.post('/api/auth/login', data);
+          localStorage.setItem('token', res.data.token);
+          navigate('/dashboard');
+        } catch (e) {
+          alert('Login fehlgeschlagen');
+        }
+      };
+      return (
+        React.createElement('form', { onSubmit: handleSubmit(onSubmit), style: { padding: 20 } },
+          React.createElement(TextField, { label: 'Email', ...register('email'), fullWidth: true, margin: 'normal' }),
+          React.createElement(TextField, { label: 'Password', type: 'password', ...register('password'), fullWidth: true, margin: 'normal' }),
+          React.createElement(Button, { type: 'submit', variant: 'contained' }, 'Login'),
+          React.createElement(Button, { onClick: () => navigate('/register') }, 'Register')
+        )
+      );
+    }
+
+    function Register() {
+      const { register, handleSubmit } = useForm();
+      const navigate = useNavigate();
+      const onSubmit = async (data) => {
+        try {
+          await axios.post('/api/auth/register', data);
+          alert('Registriert');
+          navigate('/');
+        } catch (e) {
+          alert('Registrierung fehlgeschlagen');
+        }
+      };
+      return (
+        React.createElement('form', { onSubmit: handleSubmit(onSubmit), style: { padding: 20 } },
+          React.createElement(TextField, { label: 'Email', ...register('email'), fullWidth: true, margin: 'normal' }),
+          React.createElement(TextField, { label: 'Password', type: 'password', ...register('password'), fullWidth: true, margin: 'normal' }),
+          React.createElement(Button, { type: 'submit', variant: 'contained' }, 'Register')
+        )
+      );
+    }
+
+    function RoleFeatures({ features }) {
+      return React.createElement(List, null, features.map((f, i) =>
+        React.createElement(ListItem, { key: i }, React.createElement(ListItemText, { primary: f }))
+      ));
+    }
+
+    function Dashboard() {
+      const [tab, setTab] = React.useState(0);
+      const features = [
+        ['Schulen anlegen und verwalten', 'Schulleitungen benennen', 'System-Übersicht aller Schulen, Klassen und Nutzer'],
+        ['Schulevents verwalten', 'Alle Klassenevents einsehen', 'Lehrerkonten freigeben', 'Sekretariat benennen', 'Zulassungsinterface'],
+        ['Klassenevents einsehen', 'Aufgaben hinzufügen', 'Aufgaben zuweisen', 'Eltern hinzufügen', 'Zulassungsinterface', 'Benachrichtigungen'],
+        ['Events einsehen', 'Aufgaben verwalten', 'Aufgaben übernehmen', 'Benachrichtigungen']
+      ];
+      const roles = ['Admin', 'Schulleitung', 'Lehrer', 'Eltern'];
+      return (
+        React.createElement('div', null,
+          React.createElement(AppBar, { position: 'static' },
+            React.createElement(Toolbar, null,
+              React.createElement(Tabs, { value: tab, onChange: (e, v) => setTab(v), textColor: 'inherit' },
+                roles.map((r, i) => React.createElement(Tab, { key: i, label: r }))
+              )
+            )
+          ),
+          React.createElement(RoleFeatures, { features: features[tab] })
+        )
+      );
+    }
+
+    const queryClient = new QueryClient();
+    function App() {
+      return (
+        React.createElement(QueryClientProvider, { client: queryClient },
+          React.createElement(BrowserRouter, null,
+            React.createElement(Routes, null,
+              React.createElement(Route, { path: '/', element: React.createElement(Login) }),
+              React.createElement(Route, { path: '/register', element: React.createElement(Register) }),
+              React.createElement(Route, { path: '/dashboard', element: React.createElement(Dashboard) })
+            )
+          )
+        )
+      );
+    }
+    const root = createRoot(document.getElementById('root'));
+    root.render(React.createElement(App));
+  </script>
+</body>
+</html>

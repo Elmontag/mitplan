@@ -1,13 +1,12 @@
 const request = require('supertest');
 const fs = require('fs');
 const path = require('path');
-process.env.DATABASE_PATH = path.join(__dirname, '../data/test.db');
+process.env.DATABASE_PATH = ':memory:';
 const app = require('../server');
 const { db } = require('../db');
 
 afterAll(() => {
   db.close();
-  fs.unlinkSync(process.env.DATABASE_PATH);
 });
 
 describe('auth flow', () => {
